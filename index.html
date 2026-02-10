@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="./css/style.css">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap" rel="stylesheet">
+</head>
+<!-- Floating Profile -->
+<div class="profile-fab" id="profileFab" aria-label="Profil" title="Profil">
+  <span class="profile-fab__dot"></span>
+  <span class="profile-fab__initial" id="profileInitial">?</span>
+</div>
+
+<div class="profile-panel" id="profilePanel" aria-hidden="true">
+  <div class="profile-panel__header">
+    <div class="profile-panel__avatar" id="profileAvatar">?</div>
+    <div class="profile-panel__info">
+      <p class="profile-panel__name" id="profileName">Invité</p>
+      <p class="profile-panel__status" id="profileStatus">Non connecté</p>
+    </div>
+    <button class="profile-panel__close" id="profileClose" type="button">×</button>
+  </div>
+
+  <div class="profile-panel__body">
+    <p class="profile-panel__line">
+      Scores : <span class="muted">(à venir)</span>
+    </p>
+
+    <button class="profile-panel__logout" id="profileLogout" type="button">
+      Déconnexion
+    </button>
+  </div>
+</div>
+
+<div class="profile-backdrop" id="profileBackdrop"></div>
+<body>
+    <header class="navbar">
+        <div class="navbar__logo">Portfolio Badr</div>
+
+        <nav class="navbar__links">
+            <a href="#home">Accueil</a>
+            <a href="#games">Jeux</a>
+            <a href="#login" id="navAuthLink">Connexion</a>
+        </nav>
+    </header>
+    <section class="hero" id="home">
+  <video
+    class="hero__video"
+    autoplay
+    muted
+    loop
+    playsinline
+    preload="metadata"
+    poster="assets/img/A260045_medium.jpg"
+  >
+    <source src="assets/img/20260201_1650_New Video_simple_compose_01kgcycdfbebwax3e21gphe8dm.mp4" type="video/mp4" />
+  </video>
+
+  <div class="hero__overlay"></div>
+
+  <div class="titre">
+    <h1>Bienvenue dans le tunnel !</h1>
+    <h2>Attachez votre ceinture et soyez pret a decouvrir les jeux de la collection !</h2>
+
+    <div class="btn">
+        <button class="btn-primary">Jouer</button>
+        <button class="btn-secondary">En savoir plus</button>
+    </div>
+  </div>
+</section>
+
+<section class="auth" id="login">
+  <div class="auth__container reveal">
+    <div class="auth__card">
+
+    <!-- Vue INVITÉ (login/register) -->
+    <div class="auth__guest" id="authGuest">
+        <div class="auth__top">
+        <h2 class="auth__title">Accès</h2>
+        <p class="auth__subtitle">Connecte-toi pour débloquer les jeux.</p>
+        </div>
+
+        <div class="auth__tabs" role="tablist" aria-label="auth tabs">
+        <button class="auth__tab is-active" data-target="login" type="button">Connexion</button>
+        <button class="auth__tab" data-target="register" type="button">Créer un compte</button>
+        </div>
+
+        <form class="auth__form is-active" data-form="login" autocomplete="on">
+        <label class="auth__field">
+            <span>Email</span>
+            <input type="email" name="email" required />
+        </label>
+
+        <label class="auth__field">
+            <span>Mot de passe</span>
+            <input type="password" name="password" required minlength="6" />
+        </label>
+
+        <button class="auth__submit" type="submit">Se connecter</button>
+
+        <p class="auth__hint">
+            Pas de compte ?
+            <button class="auth__link" type="button" data-switch="register">Créer un compte</button>
+        </p>
+        </form>
+
+        <form class="auth__form" data-form="register" autocomplete="on">
+        <label class="auth__field">
+            <span>Pseudo</span>
+            <input type="text" name="username" required minlength="3" />
+        </label>
+
+        <label class="auth__field">
+            <span>Email</span>
+            <input type="email" name="email" required />
+        </label>
+
+        <label class="auth__field">
+            <span>Mot de passe</span>
+            <input type="password" name="password" required minlength="6" />
+        </label>
+
+        <label class="auth__field">
+            <span>Confirmer</span>
+            <input type="password" name="confirm" required minlength="6" />
+        </label>
+
+        <button class="auth__submit" type="submit">Créer mon compte</button>
+
+        <p class="auth__hint">
+            Déjà un compte ?
+            <button class="auth__link" type="button" data-switch="login">Se connecter</button>
+        </p>
+        </form>
+    </div>
+
+    <!-- Vue CONNECTÉ (fiche profil) -->
+    <div class="auth__user" id="authUser">
+        <div class="usercard">
+        <div class="usercard__header">
+            <div class="usercard__avatar" id="userAvatar">?</div>
+            <div class="usercard__info">
+            <p class="usercard__name" id="userName">—</p>
+            <p class="usercard__status">Connecté</p>
+            </div>
+        </div>
+
+        <div class="usercard__scores">
+            <div class="score-row">
+            <span>Jeu 1</span>
+            <span class="score-val" id="scoreGame1">0</span>
+            </div>
+            <div class="score-row">
+            <span>Jeu 2</span>
+            <span class="score-val" id="scoreGame2">0</span>
+            </div>
+            <div class="score-row">
+            <span>Jeu 3</span>
+            <span class="score-val" id="scoreGame3">0</span>
+            </div>
+        </div>
+
+        <button class="auth__submit" id="btnLogout" type="button">Déconnexion</button>
+        </div>
+    </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="games" id="games">
+  <div class="games__container reveal">
+    <div class="games__header">
+      <h2 class="games__title">Mes jeux</h2>
+      <p class="games__subtitle">Utilise les flèches pour changer de jeu.</p>
+    </div>
+
+    <div class="carousel">
+      <button class="carousel__btn carousel__btn--left" id="prevGame" type="button" aria-label="Jeu précédent">
+        ‹
+      </button>
+
+      <div class="carousel__viewport">
+        <div class="carousel__track" id="gameTrack">
+          <!-- Card 1 -->
+          <article class="game-card">
+                <div class="game-card__top">
+                    <h3 class="game-card__name">Jeu 1</h3>
+                    <span class="game-card__tag">Dodge Racer</span>
+                </div>
+
+                <div class="game-card__body">
+                    <iframe
+                    src="games/game1/index.html"
+                    class="game-frame"
+                    loading="lazy"
+                    title="Jeu 1"
+                    ></iframe>
+                </div>
+          </article>
+
+          <!-- Card 2 -->
+          <article class="game-card">
+            <div class="game-card__top">
+              <h3 class="game-card__name">Jeu 2</h3>
+              <span class="game-card__tag">Prototype</span>
+            </div>
+
+            <div class="game-card__body">
+              <div class="game-placeholder">Ici ton mini-jeu #2</div>
+            </div>
+          </article>
+
+          <!-- Card 3 -->
+          <article class="game-card">
+            <div class="game-card__top">
+              <h3 class="game-card__name">Jeu 3</h3>
+              <span class="game-card__tag">Prototype</span>
+            </div>
+
+            <div class="game-card__body">
+              <div class="game-placeholder">Ici ton mini-jeu #3</div>
+            </div>
+          </article>
+        </div>
+      </div>
+
+      <button class="carousel__btn carousel__btn--right" id="nextGame" type="button" aria-label="Jeu suivant">
+        ›
+      </button>
+    </div>
+
+    <div class="carousel__dots" id="gameDots" aria-label="Navigation jeux"></div>
+  </div>
+</section>
+
+<div class="toast-container" id="toastContainer"></div>
+<script src="./js/index.js"></script>
+</body>
+</html>
