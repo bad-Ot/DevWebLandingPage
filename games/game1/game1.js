@@ -1,413 +1,600 @@
 /* =================================================
-   GAME 1 — Dodge Racer (Canvas)
+   JEU 1 — Dodge Racer (Canvas)
    ================================================= */
 
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-
-/* ---------- Canvas size ---------- */
-function resizeCanvas() {
-  canvas.width = canvas.offsetWidth;
-  canvas.height = 360;
-
-  // Reposition car nicely after resize
-  car.x = canvas.width / 2 - car.w / 2;
-  car.y = canvas.height - car.h - 18;
-}
-window.addEventListener("resize", resizeCanvas);
-
-/* ---------- Load car image ---------- */
-const carImg = new Image();
-carImg.src = "../../assets/img/F1audi.png";
-
-let carImgLoaded = false;
-
-/* ---------- LocalStorage helpers ---------- */
-function getCurrentUser() {
-  try {
-    return JSON.parse(localStorage.getItem("currentUser"));
-  } catch {
-    return null;
-  }
-}
-
-function getScores(email) {
-  const key = `scores_${email}`;
-  try {
-    return (
-      JSON.parse(localStorage.getItem(key)) || { game1: 0, game2: 0, game3: 0 }
-    );
-  } catch {
-    return { game1: 0, game2: 0, game3: 0 };
-  }
-}
-
-function saveScore(email, value) {
-  const key = `scores_${email}`;
-  const scores = getScores(email);
-  scores.game1 = Math.max(scores.game1, value);
-  localStorage.setItem(key, JSON.stringify(scores));
-}
-
-/* ---------- Game state ---------- */
-let running = false;
-let gameOver = false;
-let score = 0;
-let best = 0;
-let roadScroll = 0;
-
-/* ---------- Player ---------- */
-const car = {
-  x: 0,
-  y: 0,
-  w: 90,     
-  h: 160,
-  speed: 620
+// CONSTANTES
+const CONFIG = {
+  CANVAS_WIDTH: 1200,
+  CANVAS_HEIGHT: 360,
+  CAR_WIDTH: 90,
+  CAR_HEIGHT: 160,
+  CAR_SPEED: 620,
+  ROAD_MARGIN: 90,
+  INVUL_TIME: 0.8,
+  SPAWN_DELAY_BASE: 0.9,
+  OBSTACLE_PADDING: 4,
+  HIT_THRESHOLD: 8,
+  MAX_LIVES: 3,
+  LEVEL_UP_SCORE: 120
 };
 
-/* ---------- Road ---------- */
-const road = {
-  margin: 90
+// États du jeu
+const GAME_STATES = {
+  MENU: 'menu',
+  PLAYING: 'playing',
+  GAME_OVER: 'gameover',
+  HIGH_SCORES: 'highscores'
 };
 
-/* ---------- Obstacles ---------- */
-const obstacles = [];
-let spawnTimer = 0;
-let spawnDelay = 0.9;
-let obstacleSpeed = 260;
-
-// ---------- Levels (1 -> 6) ----------
+// Niveaux : vitesse, spawn delay, multi-spawn chance
 const LEVELS = [
-  { speed: 220, spawnDelay: 1.05, multiSpawnChance: 0.00 }, // 1: 
-  { speed: 260, spawnDelay: 0.95, multiSpawnChance: 0.08 }, // 2
-  { speed: 310, spawnDelay: 0.85, multiSpawnChance: 0.12 }, // 3
-  { speed: 380, spawnDelay: 0.75, multiSpawnChance: 0.18 }, // 4
-  { speed: 460, spawnDelay: 0.65, multiSpawnChance: 0.25 }, // 5
-  { speed: 560, spawnDelay: 0.55, multiSpawnChance: 0.35 }, // 6: 
+  { speed: 220, spawnDelay: 1.05, multiSpawnChance: 0.00 },
+  { speed: 260, spawnDelay: 0.95, multiSpawnChance: 0.08 },
+  { speed: 310, spawnDelay: 0.85, multiSpawnChance: 0.12 },
+  { speed: 380, spawnDelay: 0.75, multiSpawnChance: 0.18 },
+  { speed: 460, spawnDelay: 0.65, multiSpawnChance: 0.25 },
+  { speed: 560, spawnDelay: 0.55, multiSpawnChance: 0.35 }
 ];
 
-let level = 1;
 const MAX_LEVEL = 6;
 
-// score requis pour changer de niveau (ajuste comme tu veux)
-const LEVEL_UP_SCORE = 120; 
-
-/* ---------- Controls ---------- */
-const keys = {
-  left: false,
-  right: false
-};
-
-/* ---------- Image onload: keep ratio + set ideal size ---------- */
-carImg.onload = () => {
-  carImgLoaded = true;
-
-  // Keep the original image ratio (W/H)
-  const ratio = carImg.naturalWidth / carImg.naturalHeight;
-
-  // Make the car about 28% of canvas height
-  car.h = Math.round(canvas.height * 0.28);
-  car.w = Math.round(car.h * ratio);
-
-  // Place it nicely
-  car.x = canvas.width / 2 - car.w / 2;
-  car.y = canvas.height - car.h - 18;
-};
-
-/* ---------- Init ---------- */
-function init() {
-  resizeCanvas();
-
-  const user = getCurrentUser();
-  if (user?.email) {
-    best = getScores(user.email).game1 || 0;
-    document.getElementById("best").textContent = best;
-  }
-
-  resetGame();
-  loop();
-}
-
-function applyLevel(lv) {
-  const cfg = LEVELS[lv - 1];
-  obstacleSpeed = cfg.speed;
-  spawnDelay = cfg.spawnDelay;
-}
-
-/* ---------- Reset ---------- */
-function resetGame() {
-  score = 0;
-  obstacles.length = 0;
-  spawnTimer = 0;
-  level = 1;
-  applyLevel(level);
-  roadScroll = 0;
-
-  running = false;
-  gameOver = false;
-
-  car.x = canvas.width / 2 - car.w / 2;
-  car.y = canvas.height - car.h - 18;
-
-  document.getElementById("score").textContent = "0";
-}
-
-/* ---------- Start / End ---------- */
-function startGame() {
-  const user = getCurrentUser();
-  if (!user) {
-    alert("Connecte-toi pour jouer");
-    return;
-  }
-  resetGame();
-  running = true;
-}
-
-function endGame() {
-  running = false;
-  gameOver = true;
-
-  const finalScore = Math.floor(score);
-  document.getElementById("score").textContent = finalScore;
-
-  const user = getCurrentUser();
-  if (user?.email) {
-    saveScore(user.email, finalScore);
-    best = Math.max(best, finalScore);
-    document.getElementById("best").textContent = best;
-  }
-}
-
-/* ---------- Obstacles ---------- */
-function spawnObstacle() {
-  const w = 60 + Math.random() * 90;
-  obstacles.push({
-    x: road.margin + Math.random() * (canvas.width - road.margin * 2 - w),
-    y: -50,
-    w,
-    h: 24 + Math.random() * 26
-  });
-}
-
-/* ---------- Collision ---------- */
-function rectCollision(a, b) {
-  return (
-    a.x < b.x + b.w &&
-    a.x + a.w > b.x &&
-    a.y < b.y + b.h &&
-    a.y + a.h > b.y
-  );
-}
-
-/* ---------- Draw highway background ---------- */
-function drawHighway() {
-  const margin = road.margin;
-  const roadW = canvas.width - margin * 2;
-
-  // asphalt
-  ctx.fillStyle = "#0b0b0b";
-  ctx.fillRect(margin, 0, roadW, canvas.height);
-
-  // subtle grain texture (fast)
-  for (let i = 0; i < 140; i++) {
-    const x = margin + Math.random() * roadW;
-    const y = Math.random() * canvas.height;
-    const a = 0.02 + Math.random() * 0.05;
-    ctx.fillStyle = `rgba(255,255,255,${a})`;
-    ctx.fillRect(x, y, 1, 1);
-  }
-
-  // red borders + glow
-  ctx.strokeStyle = "rgba(255,0,60,0.75)";
-  ctx.lineWidth = 4;
-  ctx.strokeRect(margin, 0, roadW, canvas.height);
-
-  // light side lines
-  ctx.strokeStyle = "rgba(255,255,255,0.12)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(margin + 16, 0);
-  ctx.lineTo(margin + 16, canvas.height);
-  ctx.moveTo(margin + roadW - 16, 0);
-  ctx.lineTo(margin + roadW - 16, canvas.height);
-  ctx.stroke();
-
-  // center dashed line (scrolling)
-  const dashH = 26;
-  const gap = 22;
-  const total = dashH + gap;
-  const centerX = canvas.width / 2;
-
-  let y = -(roadScroll % total);
-  ctx.fillStyle = "rgba(255,255,255,0.22)";
-  while (y < canvas.height) {
-    ctx.fillRect(centerX - 2, y, 4, dashH);
-    y += total;
-  }
-
-  // vignette edges for contrast
-  const grd = ctx.createLinearGradient(0, 0, canvas.width, 0);
-  grd.addColorStop(0, "rgba(0,0,0,0.55)");
-  grd.addColorStop(0.18, "rgba(0,0,0,0)");
-  grd.addColorStop(0.82, "rgba(0,0,0,0)");
-  grd.addColorStop(1, "rgba(0,0,0,0.55)");
-  ctx.fillStyle = grd;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-}
-
-/* ---------- Update ---------- */
-function update(dt) {
-  if (!running) return;
-
-  // Score
-  score += dt * 10;
-  // Level up
-  const newLevel = Math.min(MAX_LEVEL, Math.floor(score / LEVEL_UP_SCORE) + 1);
-  if (newLevel !== level) {
-     level = newLevel;
-     applyLevel(level);
-
-// petit feedback visuel (optionnel)
-// showToast?.("info", "Niveau", `Niveau ${level}`);
-  }
-  document.getElementById("score").textContent = Math.floor(score);
-
-  // Highway scroll based on speed
-  roadScroll -= dt * obstacleSpeed * 0.6;
-
-  // Controls
-  if (keys.left) car.x -= car.speed * dt;
-  if (keys.right) car.x += car.speed * dt;
-
-  // Clamp inside road
-  car.x = Math.max(
-    road.margin + 12,
-    Math.min(canvas.width - road.margin - car.w - 12, car.x)
-  );
-
-  // Spawning + difficulty
-  spawnTimer += dt;
-  if (spawnTimer > spawnDelay) {
-    spawnTimer = 0;
-
-  // spawn de base (toujours)
-    spawnObstacle();
-
-  // random : chance d'avoir 1 obstacle en plus (plus haut niveau => plus probable)
-    const chance = LEVELS[level - 1].multiSpawnChance;
-    if (Math.random() < chance) {
-        spawnObstacle();
-    }
-
-  // rare : triple spawn à haut niveau
-    if (level >= 5 && Math.random() < chance * 0.35) {
-        spawnObstacle();
-    }
-}
-
-  // Move obstacles
-  for (let i = obstacles.length - 1; i >= 0; i--) {
-    const o = obstacles[i];
-    o.y += obstacleSpeed * dt;
-
-    if (o.y > canvas.height + 80) {
-      obstacles.splice(i, 1);
-      continue;
-    }
-
-    // Smaller hitbox for car (more fun)
-    const hit = {
-      x: car.x + car.w * 0.18,
-      y: car.y + car.h * 0.12,
-      w: car.w * 0.64,
-      h: car.h * 0.78
+// =====================================================
+// PLAYER CLASS
+// =====================================================
+class Player {
+  constructor(x, y, canvasHeight) {
+    this.x = x;
+    this.y = y;
+    this.width = CONFIG.CAR_WIDTH;
+    this.height = CONFIG.CAR_HEIGHT;
+    this.speed = CONFIG.CAR_SPEED;
+    this.lives = CONFIG.MAX_LIVES;
+    this.image = new Image();
+    this.image.src = "../../assets/img/F1audi.png";
+    this.imageLoaded = false;
+    this.canvasHeight = canvasHeight;
+    
+    // Charger l'image et ajuster les dimensions selon le ratio
+    this.image.onload = () => {
+      this.imageLoaded = true;
+      
+      // Conserver le ratio original de l'image (Largeur/Hauteur)
+      const ratio = this.image.naturalWidth / this.image.naturalHeight;
+      
+      // Faire la voiture à environ 28% de la hauteur du canvas
+      this.height = Math.round(this.canvasHeight * 0.28);
+      this.width = Math.round(this.height * ratio);
     };
+  }
 
-    const obHit = { x: o.x + 4, y: o.y + 4, w: o.w - 8, h: o.h - 8 };
+  update(dt, canvasWidth, keys) {
+    // Déplacement horizontal
+    if (keys.left) this.x -= this.speed * dt;
+    if (keys.right) this.x += this.speed * dt;
 
-    if (rectCollision(hit, obHit)) {
-      endGame();
-      break;
+    // Limiter à l'intérieur de la route
+    const roadMargin = CONFIG.ROAD_MARGIN;
+    const minX = roadMargin + 12;
+    const maxX = canvasWidth - roadMargin - this.width - 12;
+    this.x = Math.max(minX, Math.min(maxX, this.x));
+  }
+
+  resetPosition(canvasWidth, canvasHeight) {
+    // Repositionner le joueur au centre-bas après chargement image
+    this.x = canvasWidth / 2 - this.width / 2;
+    this.y = canvasHeight - this.height - 18;
+  }
+
+  draw(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    
+    if (this.imageLoaded) {
+      ctx.drawImage(this.image, 0, 0, this.width, this.height);
+    } else {
+      // Placeholder rectangle
+      ctx.fillStyle = "rgba(255,0,60,0.85)";
+      ctx.fillRect(0, 0, this.width, this.height);
     }
+    
+    ctx.restore();
+  }
+
+  getHitbox() {
+    return {
+      x: this.x + this.width * 0.18,
+      y: this.y + this.height * 0.12,
+      w: this.width * 0.64,
+      h: this.height * 0.78
+    };
+  }
+
+  takeDamage() {
+    this.lives = Math.max(0, this.lives - 1);
+  }
+
+  isAlive() {
+    return this.lives > 0;
   }
 }
 
-/* ---------- Draw ---------- */
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+class Obstacle {
+  constructor(x, y, w, h) {
+    this.x = x;
+    this.y = y;
+    this.width = w;
+    this.height = h;
+  }
 
-  // background base
-  ctx.fillStyle = "#050505";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  update(dt, speed, canvasHeight) {
+    this.y += speed * dt;
+  }
 
-  // highway
-  drawHighway();
-
-  // obstacles
-  obstacles.forEach((o) => {
+  draw(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    
+    // Contour blanc semi-transparent
     ctx.fillStyle = "rgba(255,255,255,0.10)";
-    ctx.fillRect(o.x, o.y, o.w, o.h);
+    ctx.fillRect(0, 0, this.width, this.height);
 
+    // Border rouge
     ctx.strokeStyle = "rgba(255,0,60,0.65)";
     ctx.lineWidth = 2;
-    ctx.strokeRect(o.x, o.y, o.w, o.h);
-  });
-
-  // car
-  if (carImgLoaded) {
-    ctx.drawImage(carImg, car.x, car.y, car.w, car.h);
-  } else {
-    ctx.fillStyle = "rgba(255,0,60,0.85)";
-    ctx.fillRect(car.x, car.y, car.w, car.h);
+    ctx.strokeRect(0, 0, this.width, this.height);
+    
+    ctx.restore();
   }
 
-  // HUD niveau
-  ctx.fillStyle = "rgba(255,255,255,0.75)";
-  ctx.font = "12px Orbitron, sans-serif";
-  ctx.textAlign = "left";
-  ctx.fillText(`NIVEAU ${level}/6`, 14, 22);
-
-  // texts
-  if (!running && !gameOver) {
-    drawText("Appuie sur ESPACE pour jouer", canvas.height / 2);
+  getHitbox() {
+    return {
+      x: this.x + CONFIG.OBSTACLE_PADDING,
+      y: this.y + CONFIG.OBSTACLE_PADDING,
+      w: this.width - CONFIG.OBSTACLE_PADDING * 2,
+      h: this.height - CONFIG.OBSTACLE_PADDING * 2
+    };
   }
-  if (gameOver) {
-    drawText("GAME OVER — ESPACE pour rejouer", canvas.height / 2);
+
+  isOffScreen(canvasHeight) {
+    return this.y > canvasHeight + 80;
   }
 }
 
-function drawText(text, y) {
-  ctx.fillStyle = "white";
-  ctx.font = "14px Orbitron, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(text, canvas.width / 2, y);
+class RoadRenderer {
+  constructor(canvasWidth, canvasHeight) {
+    this.canvasWidth = canvasWidth;
+    this.canvasHeight = canvasHeight;
+    this.roadScroll = 0;
+  }
+
+  update(dt, speed) {
+    this.roadScroll -= dt * speed * 0.6;
+  }
+
+  draw(ctx) {
+    const margin = CONFIG.ROAD_MARGIN;
+    const roadW = this.canvasWidth - margin * 2;
+
+    ctx.save();
+    ctx.fillStyle = "#0b0b0b";
+    ctx.fillRect(margin, 0, roadW, this.canvasHeight);
+
+    for (let i = 0; i < 140; i++) {
+      const x = margin + Math.random() * roadW;
+      const y = Math.random() * this.canvasHeight;
+      const a = 0.02 + Math.random() * 0.05;
+      ctx.fillStyle = `rgba(255,255,255,${a})`;
+      ctx.fillRect(x, y, 1, 1);
+    }
+
+    // Bordures rouges + lueur
+    ctx.strokeStyle = "rgba(255,0,60,0.75)";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(margin, 0, roadW, this.canvasHeight);
+
+    // Lignes latérales claires
+    ctx.strokeStyle = "rgba(255,255,255,0.12)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(margin + 16, 0);
+    ctx.lineTo(margin + 16, this.canvasHeight);
+    ctx.moveTo(margin + roadW - 16, 0);
+    ctx.lineTo(margin + roadW - 16, this.canvasHeight);
+    ctx.stroke();
+
+    // Ligne centrale en pointillés (défilement)
+    this.drawCenterLine(ctx, margin, roadW);
+
+    // Vignette sur les bords pour le contraste
+    this.drawVignette(ctx);
+
+    ctx.restore();
+  }
+
+  drawCenterLine(ctx, margin, roadW) {
+    const dashH = 26;
+    const gap = 22;
+    const total = dashH + gap;
+    const centerX = this.canvasWidth / 2;
+
+    let y = -(this.roadScroll % total);
+    ctx.fillStyle = "rgba(255,255,255,0.22)";
+    while (y < this.canvasHeight) {
+      ctx.fillRect(centerX - 2, y, 4, dashH);
+      y += total;
+    }
+  }
+
+  drawVignette(ctx) {
+    const grd = ctx.createLinearGradient(0, 0, this.canvasWidth, 0);
+    grd.addColorStop(0, "rgba(0,0,0,0.55)");
+    grd.addColorStop(0.18, "rgba(0,0,0,0)");
+    grd.addColorStop(0.82, "rgba(0,0,0,0)");
+    grd.addColorStop(1, "rgba(0,0,0,0.55)");
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+  }
 }
 
-/* ---------- Loop ---------- */
-let last = performance.now();
-function loop(now = performance.now()) {
-  const dt = Math.min(0.033, (now - last) / 1000);
-  last = now;
+// SPAWNER CLASS
+class ObstacleSpawner {
+  constructor() {
+    this.spawnTimer = 0;
+    this.spawnDelay = CONFIG.SPAWN_DELAY_BASE;
+    this.obstacles = [];
+  }
 
-  update(dt);
-  draw();
-  requestAnimationFrame(loop);
+  update(dt, spawnDelay, level, canvasWidth) {
+    this.spawnDelay = spawnDelay;
+    this.spawnTimer += dt;
+
+    if (this.spawnTimer > this.spawnDelay) {
+      this.spawnTimer = 0;
+
+      // Spawn de base
+      this.spawn(canvasWidth);
+
+      // Spawn multiple basé sur le niveau
+      const chance = LEVELS[Math.min(level - 1, MAX_LEVEL - 1)].multiSpawnChance;
+      if (Math.random() < chance) {
+        this.spawn(canvasWidth);
+      }
+
+      // Triple spawn rare à haut niveau
+      if (level >= 5 && Math.random() < chance * 0.35) {
+        this.spawn(canvasWidth);
+      }
+    }
+  }
+
+  spawn(canvasWidth) {
+    const obstacleW = 60 + Math.random() * 90;
+    const obstacleH = 24 + Math.random() * 26;
+    const x = CONFIG.ROAD_MARGIN + Math.random() * (canvasWidth - CONFIG.ROAD_MARGIN * 2 - obstacleW);
+
+    this.obstacles.push(new Obstacle(x, -50, obstacleW, obstacleH));
+  }
+
+  getObstacles() {
+    return this.obstacles;
+  }
+
+  removeObstacle(index) {
+    this.obstacles.splice(index, 1);
+  }
+
+  clear() {
+    this.obstacles.length = 0;
+  }
 }
 
-/* ---------- Events ---------- */
-window.addEventListener("keydown", (e) => {
-  if (e.key === "ArrowLeft" || e.key === "a") keys.left = true;
-  if (e.key === "ArrowRight" || e.key === "d") keys.right = true;
+// GAME STATE MANAGER
+class GameStateManager {
+  constructor() {
+    this.currentState = GAME_STATES.MENU;
+    this.previousState = null;
+  }
 
-  if (e.code === "Space") {
-    if (!running) startGame();
+  setState(newState) {
+    this.previousState = this.currentState;
+    this.currentState = newState;
+  }
+
+  getState() {
+    return this.currentState;
+  }
+
+  isState(state) {
+    return this.currentState === state;
+  }
+}
+
+// GAME MANAGER CLASS (Moteur du jeu)
+class GameManager {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext("2d");
+    this.canvas.width = CONFIG.CANVAS_WIDTH;
+    this.canvas.height = CONFIG.CANVAS_HEIGHT;
+
+    // Managers
+    this.stateManager = new GameStateManager();
+
+    // Entités
+    this.player = new Player(
+      canvas.width / 2 - CONFIG.CAR_WIDTH / 2,
+      canvas.height - CONFIG.CAR_HEIGHT - 18,
+      canvas.height
+    );
+    this.spawner = new ObstacleSpawner();
+    this.roadRenderer = new RoadRenderer(canvas.width, canvas.height);
+
+    // État du jeu
+    this.score = 0;
+    this.level = 1;
+    this.bestScore = this.loadBestScore();
+    this.invulnerable = 0;
+    this.gameOverScore = 0;
+
+    // Contrôles
+    this.keys = { left: false, right: false };
+
+    // Boucle
+    this.lastTime = performance.now();
+
+    // Setup
+    this.setupEventListeners();
+  }
+
+  setupEventListeners() {
+    // Événements centralisés
+    window.addEventListener("keydown", (e) => this.handleKeyDown(e));
+    window.addEventListener("keyup", (e) => this.handleKeyUp(e));
+
+    // Bouton démarrer du menu
+    const menuStartBtn = document.getElementById("menu-start");
+    if (menuStartBtn) {
+      menuStartBtn.addEventListener("click", () => this.startGame());
+    }
+
+    // Bouton restart
+    const restartBtn = document.getElementById("restart");
+    if (restartBtn) {
+      restartBtn.addEventListener("click", () => this.startGame());
+    }
+  }
+
+  handleKeyDown(e) {
+    if (e.key === "ArrowLeft" || e.key === "a") this.keys.left = true;
+    if (e.key === "ArrowRight" || e.key === "d") this.keys.right = true;
+
+    // ESPACE : démarrer le jeu ou rejouer
+    if (e.code === "Space") {
+      if (this.stateManager.isState(GAME_STATES.MENU)) {
+        this.startGame();
+      } else if (this.stateManager.isState(GAME_STATES.GAME_OVER)) {
+        // Vérifier l'utilisateur
+        const user = this.getCurrentUser();
+        if (user?.email) {
+          this.startGame();
+        } else {
+          alert("Connecte-toi pour jouer");
+        }
+      }
+    }
+
+    // Échap : retour au menu
+    if (e.code === "Escape") {
+      if (this.stateManager.isState(GAME_STATES.PLAYING) ||
+          this.stateManager.isState(GAME_STATES.GAME_OVER)) {
+        this.gotoMenu();
+      }
+    }
+  }
+
+  handleKeyUp(e) {
+    if (e.key === "ArrowLeft" || e.key === "a") this.keys.left = false;
+    if (e.key === "ArrowRight" || e.key === "d") this.keys.right = false;
+  }
+
+  getCurrentUser() {
+    try {
+      return JSON.parse(localStorage.getItem("currentUser"));
+    } catch {
+      return null;
+    }
+  }
+
+  loadBestScore() {
+    const user = this.getCurrentUser();
+    if (!user?.email) return 0;
+
+    try {
+      const scores = JSON.parse(localStorage.getItem(`scores_${user.email}`)) || {};
+      return scores.game1 || 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  saveBestScore(score) {
+    const user = this.getCurrentUser();
+    if (!user?.email) return;
+
+    try {
+      const key = `scores_${user.email}`;
+      const scores = JSON.parse(localStorage.getItem(key)) || { game1: 0, game2: 0, game3: 0 };
+      scores.game1 = Math.max(scores.game1, score);
+      localStorage.setItem(key, JSON.stringify(scores));
+      this.bestScore = scores.game1;
+    } catch (e) {
+      console.error("Erreur sauvegarde score:", e);
+    }
+  }
+
+  startGame() {
+    const user = this.getCurrentUser();
+    if (!user) {
+      alert("Connecte-toi pour jouer");
+      return;
+    }
+
+    this.score = 0;
+    this.level = 1;
+    this.player.lives = CONFIG.MAX_LIVES;
+    this.player.resetPosition(this.canvas.width, this.canvas.height);
+    this.invulnerable = CONFIG.INVUL_TIME;
+    this.spawner.clear();
+
+    this.stateManager.setState(GAME_STATES.PLAYING);
+    document.getElementById("score").textContent = "0";
+    document.getElementById("lives").textContent = this.player.lives;
+
+    const menuEl = document.querySelector(".menu");
+    if (menuEl) menuEl.classList.add("hidden");
+  }
+
+  gotoMenu() {
+    this.stateManager.setState(GAME_STATES.MENU);
+    const menuEl = document.querySelector(".menu");
+    if (menuEl) menuEl.classList.remove("hidden");
+  }
+
+  endGame() {
+    this.gameOverScore = Math.floor(this.score);
+    this.saveBestScore(this.gameOverScore);
+    document.getElementById("best").textContent = this.bestScore;
+
+    this.stateManager.setState(GAME_STATES.GAME_OVER);
+  }
+
+  update(dt) {
+    if (this.stateManager.isState(GAME_STATES.PLAYING)) {
+      this.updateGameplay(dt);
+    }
+  }
+
+  updateGameplay(dt) {
+    // Décrémenter invulnérabilité
+    if (this.invulnerable > 0) {
+      this.invulnerable = Math.max(0, this.invulnerable - dt);
+    }
+
+    // Mettre à jour le joueur
+    this.player.update(dt, this.canvas.width, this.keys);
+
+    // Mettre à jour la route
+    const levelConfig = LEVELS[Math.min(this.level - 1, MAX_LEVEL - 1)];
+    this.roadRenderer.update(dt, levelConfig.speed);
+
+    // Mettre à jour spawner
+    this.spawner.update(dt, levelConfig.spawnDelay, this.level, this.canvas.width);
+
+    // Mettre à jour les obstacles
+    const obstacles = this.spawner.getObstacles();
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      obstacles[i].update(dt, levelConfig.speed, this.canvas.height);
+
+      // Supprimer si hors écran
+      if (obstacles[i].isOffScreen(this.canvas.height)) {
+        this.spawner.removeObstacle(i);
+        continue;
+      }
+
+      // Collision
+      if (this.invulnerable <= 0) {
+        if (this.checkCollision(this.player, obstacles[i])) {
+          this.player.takeDamage();
+          document.getElementById("lives").textContent = this.player.lives;
+
+          if (!this.player.isAlive()) {
+            this.endGame();
+            return;
+          }
+
+          // Reset invulnérabilité après hit
+          this.invulnerable = CONFIG.INVUL_TIME;
+          this.spawner.removeObstacle(i);
+        }
+      }
+    }
+
+    // Actualiser le score
+    this.score += dt * 10;
+    document.getElementById("score").textContent = Math.floor(this.score);
+
+    // Passage de niveau
+    const newLevel = Math.min(MAX_LEVEL, Math.floor(this.score / CONFIG.LEVEL_UP_SCORE) + 1);
+    if (newLevel !== this.level) {
+      this.level = newLevel;
+    }
+  }
+
+  checkCollision(player, obstacle) {
+    const playerHit = player.getHitbox();
+    const obstacleHit = obstacle.getHitbox();
+
+    // Calcul de l'intersection
+    const ix = Math.max(0, Math.min(playerHit.x + playerHit.w, obstacleHit.x + obstacleHit.w) - Math.max(playerHit.x, obstacleHit.x));
+    const iy = Math.max(0, Math.min(playerHit.y + playerHit.h, obstacleHit.y + obstacleHit.h) - Math.max(playerHit.y, obstacleHit.y));
+
+    // Vérifier si intersection > seuil
+    return ix > CONFIG.HIT_THRESHOLD && iy > CONFIG.HIT_THRESHOLD;
+  }
+
+  draw() {
+    // Fond noir
+    this.ctx.fillStyle = "#050505";
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    this.roadRenderer.draw(this.ctx);
+
+    const obstacles = this.spawner.getObstacles();
+    obstacles.forEach(o => o.draw(this.ctx));
+
+    this.player.draw(this.ctx);
+
+    this.ctx.fillStyle = "rgba(255,255,255,0.75)";
+    this.ctx.font = "12px Orbitron, sans-serif";
+    this.ctx.textAlign = "left";
+    this.ctx.fillText(`NIVEAU ${this.level}/6`, 14, 22);
+
+    if (this.stateManager.isState(GAME_STATES.PLAYING)) {
+
+    } else if (this.stateManager.isState(GAME_STATES.GAME_OVER)) {
+      this.drawGameOverMessage();
+    }
+  }
+
+  drawGameOverMessage() {
+    this.ctx.fillStyle = "white";
+    this.ctx.font = "14px Orbitron, sans-serif";
+    this.ctx.textAlign = "center";
+    this.ctx.fillText("GAME OVER — ESPACE pour rejouer", this.canvas.width / 2, this.canvas.height / 2);
+  }
+
+  loop(now) {
+    const dt = Math.min(0.033, (now - this.lastTime) / 1000);
+    this.lastTime = now;
+
+    this.update(dt);
+    this.draw();
+
+    requestAnimationFrame((t) => this.loop(t));
+  }
+
+  start() {
+    requestAnimationFrame((t) => this.loop(t));
+  }
+}
+
+// INITIALISATION
+let gameManager;
+
+window.addEventListener("DOMContentLoaded", () => {
+  const canvas = document.getElementById("game");
+  if (canvas) {
+    gameManager = new GameManager(canvas);
+    gameManager.start();
   }
 });
-
-window.addEventListener("keyup", (e) => {
-  if (e.key === "ArrowLeft" || e.key === "a") keys.left = false;
-  if (e.key === "ArrowRight" || e.key === "d") keys.right = false;
-});
-
-/* ---------- Start ---------- */
-init();

@@ -28,4 +28,83 @@ button {
   color: white;
   padding: 4px 10px;
   cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  transition: all 0.2s;
+}
+
+button:hover {
+  background: rgba(255,0,60,0.1);
+  border-color: rgba(255,0,60,0.9);
+}
+
+button:active {
+  transform: scale(0.95);
+}
+
+/* Menu d'accueil */
+.menu {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.9);
+  z-index: 100;
+  font-family: "Orbitron", sans-serif;
+}
+
+.menu.hidden { 
+  display: none; 
+}
+
+.menu-inner {
+  background: linear-gradient(180deg, #070707, #0b0b0b);
+  border: 2px solid rgba(255,0,60,0.8);
+  padding: 30px 40px;
+  text-align: center;
+  box-shadow: 0 0 50px rgba(255,0,60,0.3), inset 0 0 30px rgba(255,0,60,0.1);
+  border-radius: 2px;
+  max-width: 400px;
+  animation: menuPulse 2s infinite;
+}
+
+@keyframes menuPulse {
+  0%, 100% { box-shadow: 0 0 50px rgba(255,0,60,0.3), inset 0 0 30px rgba(255,0,60,0.1); }
+  50% { box-shadow: 0 0 70px rgba(255,0,60,0.5), inset 0 0 40px rgba(255,0,60,0.2); }
+}
+
+.menu-inner h1 {
+  margin: 0 0 12px 0;
+  font-size: 28px;
+  color: #ff003c;
+  text-shadow: 0 0 10px rgba(255,0,60,0.8);
+  letter-spacing: 2px;
+}
+
+.menu-inner p { 
+  margin: 8px 0 16px 0; 
+  font-size: 13px;
+  color: rgba(255,255,255,0.8);
+  line-height: 1.4;
+}
+
+.menu-inner div {
+  margin: 12px 0 18px 0;
+  font-size: 14px;
+}
+
+.menu-inner button { 
+  font-size: 14px; 
+  border: 1px solid rgba(255,0,60,0.9);
+  background: rgba(255,0,60,0.05);
+  padding: 8px 20px;
+  min-width: 120px;
+}
+
+.menu-inner button:hover {
+  background: rgba(255,0,60,0.15);
 }
