@@ -40,13 +40,25 @@
 <div class="profile-backdrop" id="profileBackdrop"></div>
 <body>
     <header class="navbar">
-        <div class="navbar__logo">Portfolio Badr</div>
+        <div class="navbar__logo">Jeux Badr</div>
 
-        <nav class="navbar__links">
-            <a href="#home">Accueil</a>
-            <a href="#games">Jeux</a>
-            <a href="#login" id="navAuthLink">Connexion</a>
+        <nav class="navbar__links" id="navbarLinks">
+            <a href="#home" class="navbar__link">Accueil</a>
+            <a href="#games" class="navbar__link">Jeux</a>
+            <a href="#login" id="navAuthLink" class="navbar__link">Connexion</a>
         </nav>
+
+        <nav class="navbar__mobile-menu" id="navbarMobileMenu">
+            <a href="#home" class="navbar__link">Accueil</a>
+            <a href="#games" class="navbar__link">Jeux</a>
+            <a href="#login" id="navAuthLinkMobile" class="navbar__link">Connexion</a>
+        </nav>
+
+        <button class="navbar__burger" id="navbarBurger" type="button" aria-label="Menu" aria-expanded="false">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
     </header>
     <section class="hero" id="home">
   <video
@@ -68,7 +80,7 @@
     <h2>Attachez votre ceinture et soyez pret a decouvrir les jeux de la collection !</h2>
 
     <div class="btn">
-        <button class="btn-primary">Jouer</button>
+        <a href="#games" class="btn-primary">Jouer</a>
         <button class="btn-secondary">En savoir plus</button>
     </div>
   </div>

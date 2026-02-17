@@ -21,6 +21,35 @@ window.addEventListener("scroll", handleNavbarScroll);
 handleNavbarScroll();
 
 /* ===============================
+   2.5) Burger menu (mobile)
+   =============================== */
+const navbarBurger = document.getElementById("navbarBurger");
+const navbarMobileMenu = document.getElementById("navbarMobileMenu");
+const mobileMenuLinks = navbarMobileMenu?.querySelectorAll(".navbar__link") || [];
+
+function toggleBurger() {
+  const isOpen = navbarBurger.classList.toggle("is-active");
+  navbarMobileMenu?.classList.toggle("is-open", isOpen);
+  navbarBurger?.setAttribute("aria-expanded", isOpen);
+}
+
+function closeBurger() {
+  navbarBurger?.classList.remove("is-active");
+  navbarMobileMenu?.classList.remove("is-open");
+  navbarBurger?.setAttribute("aria-expanded", "false");
+}
+
+navbarBurger?.addEventListener("click", toggleBurger);
+
+// Fermer le menu quand on clique sur un lien
+mobileMenuLinks.forEach((link) => {
+  link.addEventListener("click", closeBurger);
+});
+
+// Fermer le menu au scroll
+window.addEventListener("scroll", closeBurger);
+
+/* ===============================
    3) Toasts futuristes (remplace alert)
    Nécessite : <div id="toastContainer" class="toast-container"></div>
    =============================== */
@@ -162,6 +191,7 @@ function closeProfile() {
    Navbar Auth (Connexion <-> Profil)
    =============================== */
 const navAuthLink = document.getElementById("navAuthLink");
+const navAuthLinkMobile = document.getElementById("navAuthLinkMobile");
 
 function updateNavbarAuth() {
   if (!navAuthLink) return;
@@ -175,10 +205,26 @@ function updateNavbarAuth() {
       e.preventDefault();
       openProfile?.();
     };
+
+    if (navAuthLinkMobile) {
+      navAuthLinkMobile.textContent = "Profil";
+      navAuthLinkMobile.href = "#";
+      navAuthLinkMobile.onclick = (e) => {
+        e.preventDefault();
+        closeBurger();
+        openProfile?.();
+      };
+    }
   } else {
     navAuthLink.textContent = "Connexion";
     navAuthLink.href = "#login";
     navAuthLink.onclick = null;
+
+    if (navAuthLinkMobile) {
+      navAuthLinkMobile.textContent = "Connexion";
+      navAuthLinkMobile.href = "#login";
+      navAuthLinkMobile.onclick = null;
+    }
   }
 }
 

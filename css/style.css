@@ -91,6 +91,82 @@ body {
   opacity: 1;
 }
 
+/* Burger menu */
+.navbar__burger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  z-index: 1001;
+}
+
+.navbar__burger span {
+  width: 24px;
+  height: 2px;
+  background: white;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.navbar__burger.is-active span:nth-child(1) {
+  transform: rotate(45deg) translate(8px, 8px);
+}
+
+.navbar__burger.is-active span:nth-child(2) {
+  opacity: 0;
+}
+
+.navbar__burger.is-active span:nth-child(3) {
+  transform: rotate(-45deg) translate(7px, -7px);
+}
+
+/* Mobile menu */
+.navbar__mobile-menu {
+  position: fixed;
+  top: 48px;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  z-index: 999;
+}
+
+.navbar__mobile-menu.is-open {
+  max-height: 300px;
+  padding: 16px 20px;
+  gap: 12px;
+}
+
+.navbar__mobile-menu a {
+  color: white;
+  text-decoration: none;
+  padding: 12px 0;
+  font-size: 14px;
+  letter-spacing: 1px;
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.navbar__mobile-menu a:last-child {
+  border-bottom: none;
+}
+
+.navbar__mobile-menu a:hover {
+  opacity: 1;
+  color: #ff003c;
+}
+
 /* Hero vidéo */
 .hero {
   position: relative;
@@ -165,7 +241,8 @@ body {
 }
 
 /* Style commun */
-.btn button {
+.btn button,
+.btn a {
   position: relative;
   padding: 14px 28px;
 
@@ -181,6 +258,8 @@ body {
 
   transition: transform 0.25s ease, box-shadow 0.25s ease, opacity 0.25s ease;
   overflow: hidden;
+  display: inline-block;
+  text-decoration: none;
 }
 
 /* Rouge */
@@ -195,7 +274,8 @@ body {
   color: #111;
 }
 
-.btn button::after {
+.btn button::after,
+.btn a::after {
   content: "";
   position: absolute;
   inset: -2px;
@@ -205,11 +285,13 @@ body {
   transition: opacity 0.25s ease;
 }
 
-.btn button:hover::after {
+.btn button:hover::after,
+.btn a:hover::after {
   opacity: 1;
 }
 
-.btn button:hover {
+.btn button:hover,
+.btn a:hover {
   transform: translateY(-2px);
   box-shadow:
     0 0 16px rgba(255, 255, 255, 0.35),
@@ -225,6 +307,22 @@ body {
 @media (max-width: 700px) {
   .navbar {
     padding: 12px 18px;
+  }
+
+  .navbar__links {
+    display: none;
+  }
+
+  .navbar__burger {
+    display: flex;
+  }
+
+  .navbar__logo {
+    font-size: 14px;
+  }
+
+  .navbar__mobile-menu {
+    display: flex;
   }
 
   .navbar__links a {
